@@ -3,7 +3,7 @@
 ## Day 1.
 
 - [🥊 Challenges](./day1/challenges.mo)
-- [🙋 Questions](./day1/QUESTIONS.md)
+- [🙋 Questions](./day1/QUESTIONS.MD)
 
 ## Day 2.
 
