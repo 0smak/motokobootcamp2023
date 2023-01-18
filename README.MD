@@ -7,7 +7,9 @@
 
 ## Day 2.
 
-`// todo`
+- [🥊 Challenges](./day2/challenges.mo)
+- [🙋 Questions](./day2/QUESTIONS.MD)
+- [🛹 Task](./day2/task/skeleton)
 
 ## Day 3.
 
