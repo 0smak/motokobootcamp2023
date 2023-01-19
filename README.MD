@@ -13,7 +13,9 @@
 
 ## Day 3.
 
-`// todo`
+- [🥊 Challenges](./day3/main.mo)
+- [🙋 Questions](./day3/QUESTIONS.MD)
+- [🛹 Task](./day3/task/.)
 
 ## Day 4.
 
