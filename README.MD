@@ -19,7 +19,9 @@
 
 ## Day 4.
 
-`// todo`
+- [🥊 Challenges](./day4/challenges.mo)
+- [🙋 Questions](./day4/QUESTIONS.MD)
+- [🛹 Task](./day4/task/.)
 
 ## Day 5.
 
