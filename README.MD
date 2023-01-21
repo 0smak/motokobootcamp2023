@@ -25,7 +25,7 @@
 
 ## Day 5.
 
-`// todo`
+- [🙋 Questions](./day5/QUESTIONS.MD)
 
 ## Day 6.
 
