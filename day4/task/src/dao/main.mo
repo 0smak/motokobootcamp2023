@@ -116,8 +116,8 @@ actor {
 		}
 	};
 
-	public func delete_artist(id : Text) : async () {
-		if (await exist_artist(?id)) {
+	public shared ({ caller }) func delete_artist(id : Text) : async () {
+		if ((await exist_artist(?id)) and is_author(caller, id)) {
 			ignore artists.remove(id)
 		}
 	};
@@ -160,42 +160,49 @@ actor {
 		}
 	};
 
-	public func add_artist_proposal(artistId : Text, new_proposal : Types.Proposal) : async () {
-		await manipulate_artist_proposal(
-			artistId,
-			func(proposals : Buffer.Buffer<Types.Proposal>) {
-				proposals.add(new_proposal)
-			},
-		)
+	public shared ({ caller }) func add_artist_proposal(artistId : Text, new_proposal : Types.Proposal) : async () {
+		if (is_author(caller, artistId)) {
+			await manipulate_artist_proposal(
+				artistId,
+				func(proposals : Buffer.Buffer<Types.Proposal>) {
+					proposals.add(new_proposal)
+				},
+			)
+		}
 	};
 
-	public func update_artist_proposal(artistId : Text, proposal : Types.Proposal) : async () {
-		await manipulate_artist_proposal(
-			artistId,
-			func(proposals : Buffer.Buffer<Types.Proposal>) {
-				let index : ?Nat = get_proposal_index(proposals, proposal.id);
-				switch (index) {
-					case null {};
-					case (?index) {
-						proposals.put(index, proposal)
+	public shared ({ caller }) func update_artist_proposal(artistId : Text, proposal : Types.Proposal) : async () {
+		if (is_author(caller, artistId)) {
+			await manipulate_artist_proposal(
+				artistId,
+				func(proposals : Buffer.Buffer<Types.Proposal>) {
+					let index : ?Nat = get_proposal_index(proposals, proposal.id);
+					switch (index) {
+						case null {};
+						case (?index) {
+							proposals.put(index, proposal)
+						}
 					}
-				}
-			},
-		)
+				},
+			)
+		}
 	};
 
-	public func delete_artist_proposal(artistId : Text, proposalId : Nat) : async () {
-		await manipulate_artist_proposal(
-			artistId,
-			func(proposals : Buffer.Buffer<Types.Proposal>) {
-				let index : ?Nat = get_proposal_index(proposals, proposalId);
-				switch (index) {
-					case null {};
-					case (?index) {
-						ignore proposals.remove(proposalId)
+	public shared ({ caller }) func delete_artist_proposal(artistId : Text, proposalId : Nat) : async () {
+		if (is_author(caller, artistId)) {
+
+			await manipulate_artist_proposal(
+				artistId,
+				func(proposals : Buffer.Buffer<Types.Proposal>) {
+					let index : ?Nat = get_proposal_index(proposals, proposalId);
+					switch (index) {
+						case null {};
+						case (?index) {
+							ignore proposals.remove(proposalId)
+						}
 					}
-				}
-			},
-		)
+				},
+			)
+		}
 	}
 }
