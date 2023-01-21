@@ -4,16 +4,18 @@ import Buffer "mo:base/Buffer";
 import Nat "mo:base/Nat";
 import Option "mo:base/Option";
 import Iter "mo:base/Iter";
+import Principal "mo:base/Principal";
+import Text "mo:base/Text";
 import Hash "mo:base/Hash";
 import HashMap "mo:base/HashMap";
 
 actor {
-	stable var stableArtists : [(Nat, Types.Artist)] = [];
-	let artists = HashMap.fromIter<Nat, Types.Artist>(
+	stable var stableArtists : [(Text, Types.Artist)] = [];
+	let artists = HashMap.fromIter<Text, Types.Artist>(
 		stableArtists.vals(),
 		10,
-		Nat.equal,
-		Hash.hash,
+		Text.equal,
+		Text.hash,
 	);
 
 	system func preupgrade() {
@@ -24,20 +26,54 @@ actor {
 		stableArtists := []
 	};
 
-	public func exist_artist(id : Nat) : async Bool {
-		switch (artists.get(id)) {
+	public func exist_artist(id : ?Text) : async Bool {
+		switch (id) {
 			case null { false };
-			case (?id) { true }
+			case (?id) {
+				switch (artists.get(id)) {
+					case null { false };
+					case (?id) { true }
+				}
+			}
 		}
 	};
 
-	public func add_artist(artist : Types.Artist) : async () {
-		switch (artists.get(artist.id)) {
-			case null {
-				artists.put(artist.id, artist)
+	public shared ({ caller }) func add_artist(
+		name : Text,
+		img : Text,
+		proposals : Types.ProposalArray,
+	) : async () {
+		switch (await exist_artist(?Principal.toText(caller))) {
+			case (false) {
+				create_new_artist(
+					Principal.toText(caller),
+					name,
+					img,
+					caller,
+					proposals,
+				)
 			};
-			case (?id) {}
+			case (true) {}
 		}
+	};
+
+	private func create_new_artist(
+		id : Text,
+		name : Text,
+		img : Text,
+		caller : Principal,
+		proposals : Types.ProposalArray,
+	) : () {
+		artists.put(
+			id,
+			{
+				id = id;
+				name = name;
+				img = img;
+				proposals = proposals;
+				creator = caller
+			},
+		)
 	};
 
 	public func get_artists_count() : async Nat {
@@ -48,26 +84,45 @@ actor {
 		return Iter.toArray<Types.Artist>(artists.vals())
 	};
 
-	public func get_artist(id : Nat) : async ?Types.Artist {
+	public func get_artist(id : Text) : async ?Types.Artist {
 		return artists.get(id)
 	};
 
-	public func update_artist(artist : Types.Artist) : async () {
-		switch (artists.get(artist.id)) {
-			case null {};
-			case (?id) {
-				artists.put(artist.id, artist)
+	private func is_author(caller : Principal, artist_id : Text) : Bool {
+		return Text.equal(Principal.toText(caller), artist_id)
+	};
+
+	public shared ({ caller }) func update_artist(
+		id : Text,
+		name : Text,
+		img : Text,
+		proposals : Types.ProposalArray,
+	) : async () {
+		if (is_author(caller, id) == false) {
+			// should throw error
+		} else {
+			switch (await exist_artist(?Principal.toText(caller))) {
+				case (true) {
+					create_new_artist(
+						Principal.toText(caller),
+						name,
+						img,
+						caller,
+						proposals,
+					)
+				};
+				case (false) {}
 			}
 		}
 	};
 
-	public func delete_artist(id : Nat) : async () {
-		if (await exist_artist(id)) {
+	public func delete_artist(id : Text) : async () {
+		if (await exist_artist(?id)) {
 			ignore artists.remove(id)
 		}
 	};
 
-	public func get_artist_proposals(id : Nat) : async Types.ProposalArray {
+	public func get_artist_proposals(id : Text) : async Types.ProposalArray {
 		let artist : ?Types.Artist = (await get_artist(id));
 		switch (artist) {
 			case null { [] };
@@ -82,7 +137,7 @@ actor {
 		return Utils.find_index<Types.Proposal, Nat>(proposals, proposalId, equal)
 	};
 
-	public func get_artist_proposal(artistId : Nat, proposalId : Nat) : async Types.OptionalProposal {
+	public func get_artist_proposal(artistId : Text, proposalId : Nat) : async Types.OptionalProposal {
 		let proposals : [Types.Proposal] = (await get_artist_proposals(artistId));
 		let index : ?Nat = get_proposal_index(Buffer.fromArray<Types.Proposal>(proposals), proposalId);
 		switch (index) {
@@ -91,7 +146,7 @@ actor {
 		}
 	};
 
-	private func manipulate_artist_proposal(artistId : Nat, action : (proposals : Buffer.Buffer<Types.Proposal>) -> ()) : async () {
+	private func manipulate_artist_proposal(artistId : Text, action : (proposals : Buffer.Buffer<Types.Proposal>) -> ()) : async () {
 		let artist : ?Types.Artist = (await get_artist(artistId));
 		switch (artist) {
 			case null {};
@@ -100,12 +155,12 @@ actor {
 				let proposals : Buffer.Buffer<Types.Proposal> = Buffer.fromArray<Types.Proposal>(proposals_array);
 				action(proposals);
 				proposals_array := Buffer.toArray<Types.Proposal>(proposals);
-				(await update_artist({ id = artist.id; name = artist.name; img = artist.img; proposals = proposals_array }))
+				(await update_artist(artist.id, artist.name, artist.img, proposals_array))
 			}
 		}
 	};
 
-	public func add_artist_proposal(artistId : Nat, new_proposal : Types.Proposal) : async () {
+	public func add_artist_proposal(artistId : Text, new_proposal : Types.Proposal) : async () {
 		await manipulate_artist_proposal(
 			artistId,
 			func(proposals : Buffer.Buffer<Types.Proposal>) {
@@ -114,7 +169,7 @@ actor {
 		)
 	};
 
-	public func update_artist_proposal(artistId : Nat, proposal : Types.Proposal) : async () {
+	public func update_artist_proposal(artistId : Text, proposal : Types.Proposal) : async () {
 		await manipulate_artist_proposal(
 			artistId,
 			func(proposals : Buffer.Buffer<Types.Proposal>) {
@@ -129,7 +184,7 @@ actor {
 		)
 	};
 
-	public func delete_artist_proposal(artistId : Nat, proposalId : Nat) : async () {
+	public func delete_artist_proposal(artistId : Text, proposalId : Nat) : async () {
 		await manipulate_artist_proposal(
 			artistId,
 			func(proposals : Buffer.Buffer<Types.Proposal>) {
